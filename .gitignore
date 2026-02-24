@@ -42,4 +42,3 @@ next-env.d.ts
 
 backend/node_modules
 backend/package-lock.json
-components
