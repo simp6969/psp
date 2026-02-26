@@ -1,28 +1,23 @@
-const PhotoModel = require("./mongo_db/user");
-const connect = require("./mongo_db/mongodb");
+require("dotenv").config();
 const express = require("express");
+const { connect } = require("./mongo_db/mongodb");
+const uploadRoutes = require("./mongo_db/upload");
 const cors = require("cors");
-const app = express();
 
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Connect to MongoDB and GridFS
 connect();
-app.use(cors());
+
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("Yay");
-});
+// Enable All CORS Requests
+app.use(cors());
 
-app.post("/picture", async (req, res) => {
-  const body = req.body;
-  const model = {
-    base64: body.base64,
-    username: body.username,
-    uniqueID: body.uniqueID,
-    views: 1,
-  };
-  await PhotoModel.PhotoModel.create(model);
-  res.status(200);
-  res.send(model);
-});
+// Routes
+app.use("/api", uploadRoutes);
 
-app.listen(3001);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
