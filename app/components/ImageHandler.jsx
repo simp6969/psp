@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { sha256, sha224 } from "js-sha256";
 import Image from "next/image";
 
 const ImageWithShadow = ({ src, alt }) => {
@@ -36,16 +35,12 @@ export function ImageHandler() {
   useEffect(() => {
     const newImages = [];
     for (let i = 1; i <= 10; i++) {
-      const random_string_number = toString(Math.random() * i * 100);
-
       newImages.push({
         path: "/wallpaper_" + i + ".jpeg",
-        uniqueID: sha256(random_string_number),
       });
     }
     setImages(newImages);
   }, []);
-  console.log(images);
 
   if (images.length > 0) {
     return (
