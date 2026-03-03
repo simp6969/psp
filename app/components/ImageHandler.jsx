@@ -31,24 +31,51 @@ const ImageWithShadow = ({ src, alt }) => {
 
 export function ImageHandler() {
   const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const newImages = [];
-    for (let i = 1; i <= 10; i++) {
-      newImages.push({
-        path: "/wallpaper_" + i + ".jpeg",
-      });
-    }
-    setImages(newImages);
+    const fetchPhotos = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/photos");
+        const data = await response.json();
+        setImages(data);
+      } catch (error) {
+        console.error("Error fetching photos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPhotos();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   if (images.length > 0) {
     return (
       <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-400 mx-auto">
         {images.map((e, key) => {
-          return <ImageWithShadow key={key} src={e.path} alt="wall" />;
+          return (
+            <ImageWithShadow
+              key={key}
+              src={`http://localhost:5000/api/image/${e.fileId}`}
+              alt={e.filename || "Uploaded photo"}
+            />
+          );
         })}
       </div>
     );
   }
+
+  return (
+    <div className="text-center p-10 text-gray-500">
+      No photos found. Be the first to upload one!
+    </div>
+  );
 }

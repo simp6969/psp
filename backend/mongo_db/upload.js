@@ -105,4 +105,25 @@ router.get("/image/:fileId", async (req, res) => {
   }
 });
 
+/**
+ * @route GET /photos
+ * @description Retrieves all photo metadata in a randomized order.
+ */
+router.get("/photos", async (req, res) => {
+  try {
+    const photos = await PhotoModel.find({});
+
+    // Fischer-Yates Shuffle for randomization
+    for (let i = photos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [photos[i], photos[j]] = [photos[j], photos[i]];
+    }
+
+    res.status(200).json(photos);
+  } catch (error) {
+    console.error("Error fetching photos:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+});
+
 module.exports = router;

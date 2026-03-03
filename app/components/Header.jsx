@@ -12,6 +12,8 @@ import { ModeToggle } from "./DarkLightToggle";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+
+import { Dialogue } from "./Dialogue-Popup";
 export function Header() {
   const router = useRouter();
   return (
@@ -33,6 +35,8 @@ export function Header() {
       <Input placeholder="Search..." spellCheck={false} />
       <div className="flex justify-center items-center gap-3">
         <ModeToggle />
+        <div className="border border-[primary] h-9"></div>
+        <Dialogue />
         <div className="border border-[primary] h-9"></div>
 
         <ClerkLoaded>
