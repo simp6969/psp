@@ -1,81 +1,104 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 
-const ImageWithShadow = ({ src, alt }) => {
+// Skeleton placeholder that matches the masonry layout
+function SkeletonGrid() {
+  // Varying heights to mimic the masonry look
+  const heights = [192, 256, 224, 176, 240, 200, 260, 208, 180, 230, 196, 244];
   return (
-    <div className="relative mb-5 break-inside-avoid">
+    <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto">
+      {heights.map((h, i) => (
+        <div
+          key={i}
+          className="mb-5 break-inside-avoid rounded-lg bg-muted animate-pulse"
+          style={{ height: `${h}px` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PhotoCard({ src, alt }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className="relative mb-5 break-inside-avoid group">
+      {/* Skeleton placeholder while loading */}
+      {!loaded && (
+        <div className="w-full h-48 rounded-lg bg-muted animate-pulse" />
+      )}
       <Image
         src={src}
         alt={alt}
-        fill
-        className="top-5 left-0 object-cover rounded-lg blur-xl opacity-50 -z-10"
+        width={800}
+        height={600}
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-      />
-      <Image
-        src={src}
-        alt={alt}
-        // The width and height props are required for next/Image when using a string for src.
-        // These values are used to calculate the aspect ratio and prevent layout shift.
-        // They don't determine the rendered size of the image.
-        // I've assumed a 16:9 aspect ratio for the wallpapers.
-        width={1920}
-        height={1080}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        className="w-full h-auto object-cover rounded-lg hover:brightness-80 duration-300 hover:cursor-pointer"
+        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 hover:brightness-90 hover:cursor-pointer hover:shadow-lg ${
+          loaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
+        }`}
+        onLoad={() => setLoaded(true)}
       />
     </div>
   );
-};
+}
 
-export function ImageHandler() {
+export function ImageHandler({ refreshKey }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchPhotos = async () => {
-      try {
-        const response = await fetch("http://localhost:5000/api/photos");
-        const data = await response.json();
-        setImages(data);
-      } catch (error) {
-        console.error("Error fetching photos:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPhotos();
+  const fetchPhotos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/photos");
+      const data = await response.json();
+      setImages(data);
+    } catch (error) {
+      console.error("Error fetching photos:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchPhotos();
+  }, [fetchPhotos, refreshKey]);
+
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <SkeletonGrid />;
   }
 
-  if (images.length > 0) {
+  if (images.length === 0) {
     return (
-      <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-400 mx-auto">
-        {images.map((e, key) => {
-          return (
-            <ImageWithShadow
-              key={key}
-              src={`http://localhost:5000/api/image/${e.fileId}`}
-              alt={e.filename || "Uploaded photo"}
-            />
-          );
-        })}
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+        <svg
+          className="w-12 h-12 opacity-40"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+        <p className="text-sm">No photos yet. Be the first to upload one!</p>
       </div>
     );
   }
 
   return (
-    <div className="text-center p-10 text-gray-500">
-      No photos found. Be the first to upload one!
+    <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto">
+      {images.map((photo) => (
+        <PhotoCard
+          key={photo.uniqueID || photo._id}
+          src={`http://localhost:5000/api/image/${photo.fileId}`}
+          alt={photo.filename || "Uploaded photo"}
+        />
+      ))}
     </div>
   );
 }

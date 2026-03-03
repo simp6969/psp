@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,25 +11,36 @@ import {
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-export function Dialogue() {
+import { UploadForm } from "./ImageUploadModal";
+
+export function Dialogue({ onUploadSuccess }) {
+  const [open, setOpen] = useState(false);
+
+  const handleSuccess = () => {
+    setOpen(false);
+    onUploadSuccess?.();
+  };
+
   return (
-    <Dialog>
-      <Button
-        asChild
-        className="bg-primary border  shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 size-9 cursor-pointer"
-      >
-        <DialogTrigger>
-          <Plus className="cursor-pointer"></Plus>
-        </DialogTrigger>
-      </Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="bg-primary border shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 size-9 cursor-pointer"
+        >
+          <Plus />
+        </Button>
+      </DialogTrigger>
+
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Are you absolutely sure?</DialogTitle>
+          <DialogTitle>Upload Photo</DialogTitle>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete your
-            account and remove your data from our servers.
+            Share a photo with the community.
           </DialogDescription>
         </DialogHeader>
+        <UploadForm onUploadSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );

@@ -41,12 +41,12 @@ router.post("/upload", upload.single("photo"), (req, res) => {
     res.status(500).json({ message: "Error uploading file to GridFS." });
   });
 
-  uploadStream.on("finish", async (file) => {
+  uploadStream.on("finish", async () => {
     try {
       const photoDoc = new PhotoModel({
-        fileId: file._id,
-        filename: file.filename,
-        contentType: file.contentType,
+        fileId: uploadStream.id,
+        filename: originalname,
+        contentType: mimetype,
         username: username,
         uniqueID: uuidv4(),
         views: 0,
@@ -56,14 +56,14 @@ router.post("/upload", upload.single("photo"), (req, res) => {
 
       res.status(201).json({
         message: "File uploaded successfully.",
-        file: file,
+        fileId: uploadStream.id,
         photoDoc: photoDoc,
       });
     } catch (error) {
       console.error("Error saving photo metadata:", error);
       // If metadata save fails, delete the orphaned GridFS file.
       gfs
-        .delete(file._id)
+        .delete(uploadStream.id)
         .catch((err) =>
           console.error(
             "Error deleting GridFS file after metadata save failure:",

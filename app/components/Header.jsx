@@ -12,9 +12,9 @@ import { ModeToggle } from "./DarkLightToggle";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-
 import { Dialogue } from "./Dialogue-Popup";
-export function Header() {
+
+export function Header({ onUploadSuccess }) {
   const router = useRouter();
   return (
     <div className=" h-20 flex items-center mt-0 flex-row justify-between m-5 gap-5">
@@ -36,9 +36,9 @@ export function Header() {
       <div className="flex justify-center items-center gap-3">
         <ModeToggle />
         <div className="border border-[primary] h-9"></div>
-        <Dialogue />
+        <Dialogue onUploadSuccess={onUploadSuccess} />
         <div className="border border-[primary] h-9"></div>
-
+     
         <ClerkLoaded>
           <SignedIn>
             <UserButton />
