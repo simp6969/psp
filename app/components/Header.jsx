@@ -4,10 +4,9 @@ import {
   ClerkLoaded,
   ClerkLoading,
   SignedIn,
-  SignedOut,
-  SignInButton,
   UserButton,
 } from "@clerk/nextjs";
+import { SignedOutComponent } from "./SignedOut";
 import { ModeToggle } from "./DarkLightToggle";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import { Dialogue } from "./Dialogue-Popup";
 export function Header({ onUploadSuccess }) {
   const router = useRouter();
   return (
-    <div className=" h-20 flex items-center mt-0 flex-row justify-between m-5 gap-5">
+    <div className=" sticky top-0 z-99 backdrop-blur-sm h-20 flex items-center mt-0 flex-row justify-between m-5 gap-5">
       <div
         onClick={() => {
           router.push("/");
@@ -43,19 +42,7 @@ export function Header({ onUploadSuccess }) {
           <SignedIn>
             <UserButton />
           </SignedIn>
-          <SignedOut>
-            <SignInButton
-              className=" bg-[--primary] w-20
-            h-10
-  text-[--primary-foreground] 
-    font-semibold
-  hover:cursor-pointer
-  rounded-lg
-  text-[16px]
-  border-2
-   border-[--light-mode-text-border]"
-            />
-          </SignedOut>
+         <SignedOutComponent/>
         </ClerkLoaded>
       </div>
       <ClerkLoading>

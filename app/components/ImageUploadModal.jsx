@@ -3,11 +3,12 @@
 import { useState, useRef } from "react";
 import { Upload, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@clerk/nextjs";
 
 export function UploadForm({ onUploadSuccess }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(useUser().user.username);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState(null); // 'success' | 'error' | null
   const [message, setMessage] = useState("");
@@ -80,20 +81,7 @@ export function UploadForm({ onUploadSuccess }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Username */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-muted-foreground">
-          Username
-        </label>
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          placeholder="Your username"
-          required
-        />
-      </div>
+     
 
       {/* File Drop Zone */}
       <div className="space-y-1.5">

@@ -5,10 +5,9 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "localhost",
-        port: "5000",
-        pathname: "/api/image/**",
+        protocol: "https",
+        hostname: "https://railway.com/project/58ea7f4d-eeb1-4eb7-9bf4-75bb4abdb89d?environmentId=7cfa99e0-4d12-4875-a71d-539a10ed6ba8",
+        pathname: "/**",
       },
     ],
   },

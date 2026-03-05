@@ -12,6 +12,8 @@ import {
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UploadForm } from "./ImageUploadModal";
+import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import { SignedOutComponent } from "./SignedOut";
 
 export function Dialogue({ onUploadSuccess }) {
   const [open, setOpen] = useState(false);
@@ -32,8 +34,7 @@ export function Dialogue({ onUploadSuccess }) {
           <Plus />
         </Button>
       </DialogTrigger>
-
-      <DialogContent>
+      <SignedIn><DialogContent>
         <DialogHeader>
           <DialogTitle>Upload Photo</DialogTitle>
           <DialogDescription>
@@ -41,7 +42,17 @@ export function Dialogue({ onUploadSuccess }) {
           </DialogDescription>
         </DialogHeader>
         <UploadForm onUploadSuccess={handleSuccess} />
-      </DialogContent>
+      </DialogContent></SignedIn>
+      <SignedOut>
+        <DialogContent>
+          <DialogHeader className="flex gap-5">
+            <DialogTitle>Please Sign In to Upload Photo</DialogTitle>
+            <DialogDescription>
+                <SignedOutComponent/>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </SignedOut>
     </Dialog>
   );
 }
