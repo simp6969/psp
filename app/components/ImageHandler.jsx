@@ -51,7 +51,7 @@ export function ImageHandler({ refreshKey }) {
   const fetchPhotos = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("https://railway.com/project/58ea7f4d-eeb1-4eb7-9bf4-75bb4abdb89d?environmentId=7cfa99e0-4d12-4875-a71d-539a10ed6ba8/api/photos");
+      const response = await fetch("https://photo-share-backend-production.up.railway.app/api/photos", {credentials: "omit",});
       const data = await response.json();
       setImages(data);
     } catch (error) {
@@ -95,7 +95,7 @@ export function ImageHandler({ refreshKey }) {
       {images.map((photo) => (
         <PhotoCard
           key={photo.uniqueID || photo._id}
-          src={`http://localhost:5000/api/image/${photo.fileId}`}
+          src={`https://photo-share-backend-production.up.railway.app/api/image/${photo.fileId}`}
           alt={photo.filename || "Uploaded photo"}
         />
       ))}

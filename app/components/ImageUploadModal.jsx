@@ -53,7 +53,7 @@ export function UploadForm({ onUploadSuccess }) {
     formData.append("username", username.trim());
 
     try {
-      const response = await fetch("http://localhost:5000/api/upload", {
+      const response = await fetch("https://photo-share-backend-production.up.railway.app/api/upload", {
         method: "POST",
         body: formData,
       });
