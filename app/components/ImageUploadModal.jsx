@@ -81,7 +81,7 @@ export function UploadForm({ onUploadSuccess }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-     
+
 
       {/* File Drop Zone */}
       <div className="space-y-1.5">
@@ -105,7 +105,7 @@ export function UploadForm({ onUploadSuccess }) {
                 <img
                   src={preview}
                   alt="Preview"
-                  className="w-full max-h-48 object-cover"
+                  className="w-full max-h-[70ddvh] object-cover"
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
@@ -131,11 +131,10 @@ export function UploadForm({ onUploadSuccess }) {
       {/* Status message */}
       {message && (
         <div
-          className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${
-            status === "success"
+          className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${status === "success"
               ? "bg-green-500/10 text-green-600 dark:text-green-400"
               : "bg-red-500/10 text-red-600 dark:text-red-400"
-          }`}
+            }`}
         >
           {status === "success" ? (
             <CheckCircle className="w-4 h-4 shrink-0" />

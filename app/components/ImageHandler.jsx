@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
+import { ImageDetailsPopup } from "./ImageDetailsPopup";
 
 // Skeleton placeholder that matches the masonry layout
 function SkeletonGrid() {
@@ -20,11 +21,16 @@ function SkeletonGrid() {
   );
 }
 
-function PhotoCard({ src, alt }) {
+function PhotoCard({ photo, onClick }) {
   const [loaded, setLoaded] = useState(false);
+  const src = `https://photo-share-backend-production.up.railway.app/api/image/${photo.fileId}`;
+  const alt = photo.filename || "Uploaded photo";
 
   return (
-    <div className="relative mb-5 break-inside-avoid group">
+    <div
+      className="relative mb-5 break-inside-avoid group cursor-pointer"
+      onClick={() => onClick(photo)}
+    >
       {/* Skeleton placeholder while loading */}
       {!loaded && (
         <div className="w-full h-48 rounded-lg bg-muted animate-pulse" />
@@ -34,10 +40,10 @@ function PhotoCard({ src, alt }) {
         alt={alt}
         width={800}
         height={600}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 hover:brightness-90 hover:cursor-pointer hover:shadow-lg ${
-          loaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
-        }`}
+        sizes="(max-width: 768px) 100dvw, (max-width: 1200px) 50dvw, 33dvw"
+        unoptimized
+        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 group-hover:brightness-90 group-hover:shadow-lg ${loaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
+          }`}
         onLoad={() => setLoaded(true)}
       />
     </div>
@@ -47,23 +53,56 @@ function PhotoCard({ src, alt }) {
 export function ImageHandler({ refreshKey }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const observer = useRef();
 
-  const fetchPhotos = useCallback(async () => {
-    setLoading(true);
+  const loadMoreRef = useCallback((node) => {
+    if (loading || loadingMore) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage((prevPage) => prevPage + 1);
+      }
+    }, { rootMargin: '200px' });
+
+    if (node) observer.current.observe(node);
+  }, [loading, loadingMore, hasMore]);
+
+  const fetchPhotos = useCallback(async (currentPage, isInitial) => {
+    if (isInitial) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      const response = await fetch("https://photo-share-backend-production.up.railway.app/api/photos", {credentials: "omit",});
+      const response = await fetch(`https://photo-share-backend-production.up.railway.app/api/photos?page=${currentPage}&limit=10`, { credentials: "omit" });
       const data = await response.json();
-      setImages(data);
+
+      setImages((prev) => isInitial ? data : [...prev, ...data]);
+      setHasMore(data.length === 10);
     } catch (error) {
       console.error("Error fetching photos:", error);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchPhotos();
-  }, [fetchPhotos, refreshKey]);
+    setPage(1);
+    fetchPhotos(1, true);
+  }, [refreshKey, fetchPhotos]);
+
+  useEffect(() => {
+    if (page > 1) {
+      fetchPhotos(page, false);
+    }
+  }, [page, fetchPhotos]);
 
   if (loading) {
     return <SkeletonGrid />;
@@ -91,14 +130,32 @@ export function ImageHandler({ refreshKey }) {
   }
 
   return (
-    <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto">
-      {images.map((photo) => (
-        <PhotoCard
-          key={photo.uniqueID || photo._id}
-          src={`https://photo-share-backend-production.up.railway.app/api/image/${photo.fileId}`}
-          alt={photo.filename || "Uploaded photo"}
-        />
-      ))}
+    <div className="flex flex-col items-center">
+      <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto w-full">
+        {images.map((photo) => (
+          <PhotoCard
+            key={photo.uniqueID || photo._id}
+            photo={photo}
+            onClick={setSelectedPhoto}
+          />
+        ))}
+      </div>
+
+      {/* Sentinel for IntersectionObserver */}
+      <div ref={loadMoreRef} className="h-4 w-full" />
+
+      {loadingMore && (
+        <div className="py-8 w-full flex justify-center">
+          <div className="w-8 h-8 rounded-full border-4 border-muted-foreground/30 border-t-primary animate-spin"></div>
+        </div>
+      )}
+
+      {/* Reusable Popup Component */}
+      <ImageDetailsPopup
+        photo={selectedPhoto}
+        isOpen={!!selectedPhoto}
+        onClose={() => setSelectedPhoto(null)}
+      />
     </div>
   );
 }

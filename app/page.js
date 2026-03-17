@@ -13,7 +13,7 @@ export default function Home() {
 
   return (
     <div
-      style={{ height: "100vh", width: "100vw" }}
+      style={{ height: "100dvh", width: "100dvw" }}
       className="overflow-x-hidden relative"
     >
       <Header onUploadSuccess={handleUploadSuccess} />

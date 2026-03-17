@@ -16,7 +16,7 @@ import { Dialogue } from "./Dialogue-Popup";
 export function Header({ onUploadSuccess }) {
   const router = useRouter();
   return (
-    <div className=" sticky top-0 z-99 backdrop-blur-sm h-20 flex items-center mt-0 flex-row justify-between m-5 gap-5">
+    <div className=" sticky top-0 z-2 backdrop-blur-sm h-20 flex items-center mt-0 flex-row justify-between m-5 gap-5">
       <div
         onClick={() => {
           router.push("/");
