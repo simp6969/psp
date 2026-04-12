@@ -53,7 +53,7 @@ export function UploadForm({ onUploadSuccess }) {
     formData.append("username", username.trim());
 
     try {
-      const response = await fetch("https://photo-share-backend-production.up.railway.app/api/upload", {
+      const response = await fetch("https://photo-share-backend-alpha.vercel.app/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -132,8 +132,8 @@ export function UploadForm({ onUploadSuccess }) {
       {message && (
         <div
           className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${status === "success"
-              ? "bg-green-500/10 text-green-600 dark:text-green-400"
-              : "bg-red-500/10 text-red-600 dark:text-red-400"
+            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+            : "bg-red-500/10 text-red-600 dark:text-red-400"
             }`}
         >
           {status === "success" ? (

@@ -6,17 +6,17 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "photo-share-backend-production.up.railway.app",
-        pathname: "/**",
-        
+        hostname: "photo-share-backend-alpha.vercel.app",
+        port: "",
+        pathname: "/api/image/**",
       },
     ],
   },
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'https://photo-share-backend-production.up.railway.app/*', // The URL of the external API
+        source: "/api/:path*",
+        destination: "https://photo-share-backend-alpha.vercel.app/api/:path*", // Fixed the destination
       },
     ];
   },

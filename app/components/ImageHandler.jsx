@@ -23,7 +23,7 @@ function SkeletonGrid() {
 
 function PhotoCard({ photo, onClick }) {
   const [loaded, setLoaded] = useState(false);
-  const src = `https://photo-share-backend-production.up.railway.app/api/image/${photo.fileId}`;
+  const src = `https://photo-share-backend-alpha.vercel.app/api/image/${photo.fileId}`;
   const alt = photo.filename || "Uploaded photo";
 
   return (
@@ -31,18 +31,17 @@ function PhotoCard({ photo, onClick }) {
       className="relative mb-5 break-inside-avoid group cursor-pointer"
       onClick={() => onClick(photo)}
     >
-      {/* Skeleton placeholder while loading */}
+      {/* Skeleton overlay while loading */}
       {!loaded && (
-        <div className="w-full h-48 rounded-lg bg-muted animate-pulse" />
+        <div className="absolute inset-0 bg-muted animate-pulse rounded-lg z-10" />
       )}
       <Image
         src={src}
         alt={alt}
         width={800}
         height={600}
-        sizes="(max-width: 768px) 100dvw, (max-width: 1200px) 50dvw, 33dvw"
-        unoptimized
-        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 group-hover:brightness-90 group-hover:shadow-lg ${loaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 group-hover:brightness-90 group-hover:shadow-lg ${loaded ? "opacity-100" : "opacity-0"
           }`}
         onLoad={() => setLoaded(true)}
       />
@@ -80,10 +79,15 @@ export function ImageHandler({ refreshKey }) {
     }
 
     try {
-      const response = await fetch(`https://photo-share-backend-production.up.railway.app/api/photos?page=${currentPage}&limit=10`, { credentials: "omit" });
+      const response = await fetch(`https://photo-share-backend-alpha.vercel.app/api/photos?page=${currentPage}&limit=10`, { credentials: "omit" });
       const data = await response.json();
 
-      setImages((prev) => isInitial ? data : [...prev, ...data]);
+      setImages((prev) => {
+        if (isInitial) return data;
+        const existingIds = new Set(prev.map((p) => p.uniqueID || p._id));
+        const newUniqueData = data.filter((p) => !existingIds.has(p.uniqueID || p._id));
+        return [...prev, ...newUniqueData];
+      });
       setHasMore(data.length === 10);
     } catch (error) {
       console.error("Error fetching photos:", error);

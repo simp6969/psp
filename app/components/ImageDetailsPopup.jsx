@@ -12,7 +12,7 @@ export function ImageDetailsPopup({ photo, isOpen, onClose }) {
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(`https://photo-share-backend-production.up.railway.app/api/image/${photo.fileId}`);
+      const response = await fetch(`https://photo-share-backend-alpha.vercel.app/api/image/${photo.fileId}`);
       if (!response.ok) throw new Error("Failed to fetch image");
 
       const blob = await response.blob();
@@ -29,7 +29,7 @@ export function ImageDetailsPopup({ photo, isOpen, onClose }) {
     }
   };
 
-  const imageUrl = `https://photo-share-backend-production.up.railway.app/api/image/${photo.fileId}`;
+  const imageUrl = `https://photo-share-backend-alpha.vercel.app//api/image/${photo.fileId}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
