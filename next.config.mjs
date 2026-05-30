@@ -2,15 +2,7 @@
 const nextConfig = {
   /* config options here */
   images: {
-    unoptimized: false,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "photo-share-backend-alpha.vercel.app",
-        port: "",
-        pathname: "/api/image/**",
-      },
-    ],
+    unoptimized: true,
   },
   async rewrites() {
     return [

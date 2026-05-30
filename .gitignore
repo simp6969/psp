@@ -42,3 +42,5 @@ next-env.d.ts
 
 backend/node_modules
 backend/package-lock.json
+# clerk configuration (can include secrets)
+/.clerk/

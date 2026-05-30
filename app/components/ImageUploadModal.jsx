@@ -53,7 +53,7 @@ export function UploadForm({ onUploadSuccess }) {
     formData.append("username", username.trim());
 
     try {
-      const response = await fetch("https://photo-share-backend-alpha.vercel.app/api/upload", {
+      const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });

@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import Image from "next/image";
+import { useState } from "react";
+import { imageUrl } from "@/lib/api";
+import { usePhotos } from "@/hooks/usePhotos";
 import { ImageDetailsPopup } from "./ImageDetailsPopup";
 
-// Skeleton placeholder that matches the masonry layout
+const SKELETON_HEIGHTS = [192, 256, 224, 176, 240, 200, 260, 208, 180, 230, 196, 244];
+
 function SkeletonGrid() {
-  // Varying heights to mimic the masonry look
-  const heights = [192, 256, 224, 176, 240, 200, 260, 208, 180, 230, 196, 244];
   return (
-    <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto">
-      {heights.map((h, i) => (
+    <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto w-full">
+      {SKELETON_HEIGHTS.map((h, i) => (
         <div
           key={i}
           className="mb-5 break-inside-avoid rounded-lg bg-muted animate-pulse"
@@ -21,105 +21,61 @@ function SkeletonGrid() {
   );
 }
 
-function PhotoCard({ photo, onClick }) {
+function PhotoCard({ photo, onClick, priority = false }) {
   const [loaded, setLoaded] = useState(false);
-  const src = `https://photo-share-backend-alpha.vercel.app/api/image/${photo.fileId}`;
+  const src = imageUrl(photo.fileId);
   const alt = photo.filename || "Uploaded photo";
 
   return (
     <div
       className="relative mb-5 break-inside-avoid group cursor-pointer"
       onClick={() => onClick(photo)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick(photo);
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
-      {/* Skeleton overlay while loading */}
       {!loaded && (
-        <div className="absolute inset-0 bg-muted animate-pulse rounded-lg z-10" />
+        <div className="absolute inset-0 min-h-[120px] bg-muted animate-pulse rounded-lg z-10" />
       )}
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={alt}
-        width={800}
-        height={600}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 group-hover:brightness-90 group-hover:shadow-lg ${loaded ? "opacity-100" : "opacity-0"
-          }`}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : "auto"}
+        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 group-hover:brightness-90 group-hover:shadow-lg ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
         onLoad={() => setLoaded(true)}
       />
     </div>
   );
 }
 
-export function ImageHandler({ refreshKey }) {
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+export function ImageHandler({ refreshKey = 0, searchQuery = "" }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const observer = useRef();
+  const { images, loading, loadingMore, hasMore, error, setLoadMoreRef, searchQuery: activeSearch } =
+    usePhotos({ refreshKey, searchQuery });
 
-  const loadMoreRef = useCallback((node) => {
-    if (loading || loadingMore) return;
-    if (observer.current) observer.current.disconnect();
-
-    observer.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage((prevPage) => prevPage + 1);
-      }
-    }, { rootMargin: '200px' });
-
-    if (node) observer.current.observe(node);
-  }, [loading, loadingMore, hasMore]);
-
-  const fetchPhotos = useCallback(async (currentPage, isInitial) => {
-    if (isInitial) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      const response = await fetch(`https://photo-share-backend-alpha.vercel.app/api/photos?page=${currentPage}&limit=10`, { credentials: "omit" });
-      const data = await response.json();
-
-      setImages((prev) => {
-        if (isInitial) return data;
-        const existingIds = new Set(prev.map((p) => p.uniqueID || p._id));
-        const newUniqueData = data.filter((p) => !existingIds.has(p.uniqueID || p._id));
-        return [...prev, ...newUniqueData];
-      });
-      setHasMore(data.length === 10);
-    } catch (error) {
-      console.error("Error fetching photos:", error);
-    } finally {
-      if (isInitial) setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    setPage(1);
-    fetchPhotos(1, true);
-  }, [refreshKey, fetchPhotos]);
-
-  useEffect(() => {
-    if (page > 1) {
-      fetchPhotos(page, false);
-    }
-  }, [page, fetchPhotos]);
-
-  if (loading) {
+  if (loading && images.length === 0) {
     return <SkeletonGrid />;
   }
 
-  if (images.length === 0) {
+  if (!loading && images.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2 px-5">
         <svg
           className="w-12 h-12 opacity-40"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          aria-hidden
         >
           <path
             strokeLinecap="round"
@@ -128,33 +84,46 @@ export function ImageHandler({ refreshKey }) {
             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
         </svg>
-        <p className="text-sm">No photos yet. Be the first to upload one!</p>
+        <p className="text-sm text-center">
+          {activeSearch
+            ? `No results for "${activeSearch}". Try a different search.`
+            : "No photos yet. Be the first to upload one!"}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center w-full">
+      {error && (
+        <p className="text-sm text-destructive py-2 px-5" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto w-full">
-        {images.map((photo) => (
+        {images.map((photo, index) => (
           <PhotoCard
             key={photo.uniqueID || photo._id}
             photo={photo}
             onClick={setSelectedPhoto}
+            priority={index < 6}
           />
         ))}
       </div>
 
-      {/* Sentinel for IntersectionObserver */}
-      <div ref={loadMoreRef} className="h-4 w-full" />
+      <div ref={setLoadMoreRef} className="h-4 w-full" aria-hidden />
 
       {loadingMore && (
         <div className="py-8 w-full flex justify-center">
-          <div className="w-8 h-8 rounded-full border-4 border-muted-foreground/30 border-t-primary animate-spin"></div>
+          <div className="w-8 h-8 rounded-full border-4 border-muted-foreground/30 border-t-primary animate-spin" />
         </div>
       )}
 
-      {/* Reusable Popup Component */}
+      {!hasMore && images.length > 0 && (
+        <p className="text-sm text-muted-foreground pb-8">You&apos;ve reached the end</p>
+      )}
+
       <ImageDetailsPopup
         photo={selectedPhoto}
         isOpen={!!selectedPhoto}
