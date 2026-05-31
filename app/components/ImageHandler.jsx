@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { imageUrl } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { ImageOff } from "lucide-react";
+import { imageUrl, thumbnailUrl } from "@/lib/api";
 import { usePhotos } from "@/hooks/usePhotos";
 import { ImageDetailsPopup } from "./ImageDetailsPopup";
 
 const SKELETON_HEIGHTS = [192, 256, 224, 176, 240, 200, 260, 208, 180, 230, 196, 244];
+
+function cardKey(photo) {
+  const fid = photo.fileId;
+  const fileId =
+    fid == null ? "" : typeof fid === "object" ? String(fid.$oid || fid) : String(fid);
+  return `${photo._id}-${fileId}`;
+}
 
 function SkeletonGrid() {
   return (
@@ -13,7 +21,7 @@ function SkeletonGrid() {
       {SKELETON_HEIGHTS.map((h, i) => (
         <div
           key={i}
-          className="mb-5 break-inside-avoid rounded-lg bg-muted animate-pulse"
+          className="mb-5 break-inside-avoid rounded-lg border border-border bg-muted animate-pulse"
           style={{ height: `${h}px` }}
         />
       ))}
@@ -22,45 +30,71 @@ function SkeletonGrid() {
 }
 
 function PhotoCard({ photo, onClick, priority = false }) {
-  const [loaded, setLoaded] = useState(false);
-  const src = imageUrl(photo.fileId);
+  const [status, setStatus] = useState("loading");
+  const [useFullRes, setUseFullRes] = useState(false);
+  const src = useFullRes ? imageUrl(photo.fileId) : thumbnailUrl(photo.fileId);
   const alt = photo.filename || "Uploaded photo";
 
+  useEffect(() => {
+    setStatus("loading");
+    setUseFullRes(false);
+  }, [photo.fileId]);
+
+  const handleError = () => {
+    if (!useFullRes) {
+      setUseFullRes(true);
+      setStatus("loading");
+      return;
+    }
+    setStatus("error");
+  };
+
   return (
-    <div
-      className="relative mb-5 break-inside-avoid group cursor-pointer"
-      onClick={() => onClick(photo)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick(photo);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      {!loaded && (
-        <div className="absolute inset-0 min-h-[120px] bg-muted animate-pulse rounded-lg z-10" />
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        fetchPriority={priority ? "high" : "auto"}
-        className={`w-full h-auto object-cover rounded-lg transition-all duration-300 group-hover:brightness-90 group-hover:shadow-lg ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
-        onLoad={() => setLoaded(true)}
-      />
-    </div>
+    <figure className="mb-5 break-inside-avoid rounded-lg border border-border overflow-hidden bg-muted/30 isolate shadow-sm transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => onClick(photo)}
+        className="relative block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-label={`View ${alt}`}
+      >
+        <div className="relative w-full min-h-[80px] bg-muted">
+          {status === "loading" && (
+            <div
+              className="absolute inset-0 z-10 min-h-[120px] bg-muted animate-pulse"
+              aria-hidden
+            />
+          )}
+
+          {status === "error" && (
+            <div className="absolute inset-0 z-10 flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground bg-muted">
+              <ImageOff className="size-8 opacity-50" aria-hidden />
+              <span className="text-xs leading-snug">Tap to view full image</span>
+            </div>
+          )}
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            key={src}
+            src={src}
+            alt={alt}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={priority ? "high" : "auto"}
+            className={`block w-full h-auto transition-opacity duration-300 ${
+              status === "loaded" ? "opacity-100" : "opacity-0"
+            }`}
+            onLoad={() => setStatus("loaded")}
+            onError={handleError}
+          />
+        </div>
+      </button>
+    </figure>
   );
 }
 
 export function ImageHandler({ refreshKey = 0, searchQuery = "" }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const { images, loading, loadingMore, hasMore, error, setLoadMoreRef, searchQuery: activeSearch } =
+  const { images, loading, loadingMore, hasMore, error, sentinelRef, searchQuery: activeSearch } =
     usePhotos({ refreshKey, searchQuery });
 
   if (loading && images.length === 0) {
@@ -89,6 +123,11 @@ export function ImageHandler({ refreshKey = 0, searchQuery = "" }) {
             ? `No results for "${activeSearch}". Try a different search.`
             : "No photos yet. Be the first to upload one!"}
         </p>
+        {error && (
+          <p className="text-sm text-destructive mt-2" role="alert">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
@@ -104,15 +143,15 @@ export function ImageHandler({ refreshKey = 0, searchQuery = "" }) {
       <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-5 p-5 max-w-[1800px] mx-auto w-full">
         {images.map((photo, index) => (
           <PhotoCard
-            key={photo.uniqueID || photo._id}
+            key={cardKey(photo)}
             photo={photo}
             onClick={setSelectedPhoto}
-            priority={index < 6}
+            priority={index < 8}
           />
         ))}
       </div>
 
-      <div ref={setLoadMoreRef} className="h-4 w-full" aria-hidden />
+      <div ref={sentinelRef} className="h-4 w-full" aria-hidden />
 
       {loadingMore && (
         <div className="py-8 w-full flex justify-center">

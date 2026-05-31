@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, FileImage, User } from "lucide-react";
+import { Download, FileImage, ImageOff, Loader2, User } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,12 @@ import {
 import { imageUrl } from "@/lib/api";
 
 export function ImageDetailsPopup({ photo, isOpen, onClose }) {
+  const [imageStatus, setImageStatus] = useState("loading");
+
+  useEffect(() => {
+    if (photo?.fileId) setImageStatus("loading");
+  }, [photo?.fileId]);
+
   if (!photo) return null;
 
   const handleDownload = async () => {
@@ -40,21 +47,43 @@ export function ImageDetailsPopup({ photo, isOpen, onClose }) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton
-        className="max-w-[95dvw] sm:max-w-[min(92dvw,1100px)] p-0 gap-0 overflow-hidden border-border bg-card text-card-foreground shadow-2xl [&>button]:text-muted-foreground [&>button]:hover:text-foreground [&>button]:top-3 [&>button]:right-3"
+        className="w-fit max-w-[96dvw] p-0 gap-0 overflow-hidden border-border bg-card text-card-foreground shadow-2xl sm:max-w-[96dvw] [&>button]:text-muted-foreground [&>button]:hover:text-foreground [&>button]:top-3 [&>button]:right-3"
       >
-        <div className="flex flex-col md:flex-row md:max-h-[90dvh]">
-          <div className="flex-1 flex items-center justify-center bg-muted/40 p-4 md:p-6 min-h-[40dvh] md:min-h-0">
+        <div className="flex max-h-[90dvh] flex-col md:flex-row md:items-stretch">
+          <div className="relative flex shrink-0 items-center justify-center bg-muted/30 p-3 sm:p-4 border-b md:border-b-0 md:border-r border-border">
+            {imageStatus === "loading" && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                <Loader2 className="size-10 animate-spin opacity-60" aria-hidden />
+                <span className="text-sm">Loading image…</span>
+              </div>
+            )}
+
+            {imageStatus === "error" && (
+              <div className="absolute inset-0 z-10 flex min-w-[200px] min-h-[200px] flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
+                <ImageOff className="size-12 opacity-50" aria-hidden />
+                <p className="text-sm">This image could not be displayed.</p>
+                <p className="text-xs">You can still try downloading the original file.</p>
+              </div>
+            )}
+
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
               alt={displayName}
-              className="object-contain max-h-[55dvh] md:max-h-[78dvh] w-full rounded-lg select-none"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              className={`block h-auto max-h-[72dvh] w-auto max-w-[min(92dvw,100%)] select-none transition-opacity duration-300 md:max-h-[82dvh] md:max-w-[min(calc(96dvw-18rem),85dvw)] ${
+                imageStatus === "loaded" ? "opacity-100" : "opacity-0"
+              }`}
+              onLoad={() => setImageStatus("loaded")}
+              onError={() => setImageStatus("error")}
             />
           </div>
 
-          <aside className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l border-border bg-background p-5 flex flex-col gap-5">
-            <DialogHeader className="text-left space-y-1 p-0">
-              <DialogTitle className="text-lg font-semibold text-foreground leading-snug break-all">
+          <aside className="flex w-full shrink-0 flex-col gap-5 bg-background p-5 md:w-64">
+            <DialogHeader className="space-y-1 p-0 text-left">
+              <DialogTitle className="text-lg font-semibold leading-snug break-all text-foreground">
                 {displayName}
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -64,32 +93,28 @@ export function ImageDetailsPopup({ photo, isOpen, onClose }) {
 
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-3 text-muted-foreground">
-                <User className="size-4 shrink-0 mt-0.5 text-primary" aria-hidden />
+                <User className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
                     Uploaded by
                   </p>
-                  <p className="text-foreground font-medium">
+                  <p className="font-medium text-foreground">
                     {photo.username || "Unknown"}
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 text-muted-foreground">
-                <FileImage className="size-4 shrink-0 mt-0.5 text-primary" aria-hidden />
+                <FileImage className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
                     File
                   </p>
-                  <p className="text-foreground break-all">{displayName}</p>
+                  <p className="break-all text-foreground">{displayName}</p>
                 </div>
               </div>
             </div>
 
-            <Button
-              onClick={handleDownload}
-              className="w-full gap-2 mt-auto"
-              size="lg"
-            >
+            <Button onClick={handleDownload} className="mt-auto w-full gap-2" size="lg">
               <Download className="size-4" />
               Download
             </Button>

@@ -4,21 +4,35 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { photosUrl, PHOTOS_PAGE_SIZE } from "@/lib/api";
 
 function photoKey(photo) {
-  return photo.uniqueID || String(photo._id);
+  return String(photo.uniqueID || photo._id || "");
 }
 
-function dedupePhotos(prev, incoming) {
-  const seenIds = new Set(prev.map((p) => photoKey(p)));
-  const seenFileIds = new Set(prev.map((p) => String(p.fileId)));
-  const unique = incoming.filter((p) => {
+function fileKey(photo) {
+  const id = photo.fileId;
+  if (id == null) return "";
+  return typeof id === "object" ? String(id.$oid || id) : String(id);
+}
+
+function dedupeAll(photos) {
+  const seenIds = new Set();
+  const seenFileIds = new Set();
+  const out = [];
+
+  for (const p of photos) {
     const id = photoKey(p);
-    const fid = String(p.fileId);
-    if (seenIds.has(id) || seenFileIds.has(fid)) return false;
+    const fid = fileKey(p);
+    if (!id) continue;
+    if (seenIds.has(id) || (fid && seenFileIds.has(fid))) continue;
     seenIds.add(id);
-    seenFileIds.add(fid);
-    return true;
-  });
-  return [...prev, ...unique];
+    if (fid) seenFileIds.add(fid);
+    out.push(p);
+  }
+
+  return out;
+}
+
+function mergePhotos(prev, incoming, reset) {
+  return dedupeAll(reset ? incoming : [...prev, ...incoming]);
 }
 
 export function usePhotos({ refreshKey = 0, searchQuery = "" } = {}) {
@@ -29,150 +43,115 @@ export function usePhotos({ refreshKey = 0, searchQuery = "" } = {}) {
   const [error, setError] = useState(null);
 
   const cursorRef = useRef(null);
-  const fetchingRef = useRef(false);
-  const abortRef = useRef(null);
-  const loadMoreNodeRef = useRef(null);
-  const observerRef = useRef(null);
+  const generationRef = useRef(0);
+  const inFlightRef = useRef(false);
+  const imagesRef = useRef([]);
+  const sentinelRef = useRef(null);
 
-  const fetchPage = useCallback(async ({ reset = false } = {}) => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
+  imagesRef.current = images;
 
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const fetchPage = useCallback(
+    async (reset) => {
+      const gen = generationRef.current;
 
-    if (reset) {
-      cursorRef.current = null;
-      setHasMore(true);
-      setError(null);
-      setLoading(true);
-      setLoadingMore(false);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const params = { limit: String(PHOTOS_PAGE_SIZE) };
-    if (cursorRef.current) {
-      params.cursor = cursorRef.current;
-    }
-    const trimmed = searchQuery.trim();
-    if (trimmed) {
-      params.q = trimmed;
-    }
-
-    try {
-      const response = await fetch(photosUrl(params), {
-        signal: controller.signal,
-        credentials: "omit",
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch photos (${response.status})`);
-      }
-      const data = await response.json();
-
-      if (controller.signal.aborted) return;
-
-      let hasMoreNext = data.length === PHOTOS_PAGE_SIZE;
-      setImages((prev) => {
-        if (reset) return data;
-        const next = dedupePhotos(prev, data);
-        if (next.length === prev.length && data.length > 0) {
-          hasMoreNext = false;
-        }
-        return next;
-      });
-      setHasMore(hasMoreNext);
-
-      if (data.length > 0) {
-        const last = data[data.length - 1];
-        cursorRef.current = String(last._id);
-      }
-    } catch (err) {
-      if (err.name === "AbortError") return;
-      console.error("Error fetching photos:", err);
-      setError(err.message);
-    } finally {
-      fetchingRef.current = false;
-      if (!controller.signal.aborted) {
-        setLoading(false);
+      if (reset) {
+        cursorRef.current = null;
+        setLoading(true);
         setLoadingMore(false);
+        setError(null);
+        setHasMore(true);
+      } else {
+        if (inFlightRef.current) return;
+        setLoadingMore(true);
       }
-    }
-  }, [searchQuery]);
 
-  const loadMore = useCallback(() => {
-    if (!hasMore || fetchingRef.current || loading || loadingMore) return;
-    fetchPage({ reset: false });
-  }, [hasMore, loading, loadingMore, fetchPage]);
+      inFlightRef.current = true;
 
-  // Reset and fetch when refresh or search changes
-  useEffect(() => {
-    setImages([]);
-    cursorRef.current = null;
-    fetchingRef.current = false;
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-    }
-    fetchPage({ reset: true });
-    return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
+      const params = { limit: String(PHOTOS_PAGE_SIZE) };
+      if (cursorRef.current) {
+        params.cursor = cursorRef.current;
       }
-    };
-  }, [refreshKey, searchQuery, fetchPage]);
-
-  // IntersectionObserver for infinite scroll
-  const setLoadMoreRef = useCallback(
-    (node) => {
-      loadMoreNodeRef.current = node;
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-        observerRef.current = null;
+      const trimmed = searchQuery.trim();
+      if (trimmed) {
+        params.q = trimmed;
       }
-      if (!node || loading || loadingMore || !hasMore) return;
 
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]?.isIntersecting) {
-            observerRef.current?.disconnect();
-            observerRef.current = null;
-            loadMore();
-          }
-        },
-        { rootMargin: "400px" },
-      );
-      observerRef.current.observe(node);
+      try {
+        const response = await fetch(photosUrl(params), {
+          credentials: "omit",
+          cache: "no-store",
+        });
+
+        if (gen !== generationRef.current) return;
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch photos (${response.status})`);
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid photos response");
+        }
+
+        if (gen !== generationRef.current) return;
+
+        const prevLen = reset ? 0 : imagesRef.current.length;
+        const next = mergePhotos(reset ? [] : imagesRef.current, data, reset);
+        const addedCount = next.length - prevLen;
+
+        setImages(next);
+
+        if (data.length > 0) {
+          cursorRef.current = String(data[data.length - 1]._id);
+        }
+
+        const pageFull = data.length === PHOTOS_PAGE_SIZE;
+        setHasMore(pageFull && (reset ? data.length > 0 : addedCount > 0));
+      } catch (err) {
+        if (gen !== generationRef.current) return;
+        console.error("Error fetching photos:", err);
+        setError(err.message);
+        setHasMore(false);
+      } finally {
+        if (gen === generationRef.current) {
+          inFlightRef.current = false;
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
     },
-    [loading, loadingMore, hasMore, loadMore],
+    [searchQuery],
   );
 
-  // Re-attach observer after a load completes
+  const loadMore = useCallback(() => {
+    if (inFlightRef.current || loading || loadingMore || !hasMore) return;
+    fetchPage(false);
+  }, [loading, loadingMore, hasMore, fetchPage]);
+
   useEffect(() => {
-    const node = loadMoreNodeRef.current;
+    generationRef.current += 1;
+    inFlightRef.current = false;
+    cursorRef.current = null;
+    setImages([]);
+    setError(null);
+    fetchPage(true);
+  }, [refreshKey, searchQuery, fetchPage]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
     if (!node || loading || loadingMore || !hasMore) return;
 
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-    observerRef.current = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          observerRef.current?.disconnect();
-          observerRef.current = null;
-          loadMore();
-        }
+        if (!entries[0]?.isIntersecting) return;
+        observer.disconnect();
+        loadMore();
       },
-      { rootMargin: "400px" },
+      { rootMargin: "300px" },
     );
-    observerRef.current.observe(node);
 
-    return () => {
-      observerRef.current?.disconnect();
-    };
+    observer.observe(node);
+    return () => observer.disconnect();
   }, [loading, loadingMore, hasMore, images.length, loadMore]);
 
   return {
@@ -181,7 +160,7 @@ export function usePhotos({ refreshKey = 0, searchQuery = "" } = {}) {
     loadingMore,
     hasMore,
     error,
-    setLoadMoreRef,
+    sentinelRef,
     searchQuery: searchQuery.trim(),
   };
 }
